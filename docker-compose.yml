@@ -1,0 +1,17 @@
+version: "3.8"
+name: zarvazy-system
+services:
+  postgresql:
+    container_name: zarvazy-system
+    image: bitnami/postgresql
+    ports:
+      - 5432:5432
+    environment:
+      - POSTGRESQL_USERNAME=docker
+      - POSTGRESQL_PASSWORD=docker
+      - POSTGRESQL_DATABASE=zarvazy-system
+    volumes:
+      - postgres_data:/bitnami/postgresql
+
+volumes:
+  postgres_data:
