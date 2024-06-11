@@ -6,3 +6,291 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
+
+enum DaysInWeek {
+  SUNDAY
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+  SATURDAY
+
+  @@map("days_in_week")
+}
+
+enum TemplateType {
+  TEXT
+  AUDIO
+  VIDEO
+  CONTACTS
+  DOCUMENT
+  IMAGE
+  INTERACTIVE
+  LOCATION
+  STICKER
+  TEMPLATE
+
+  @@map("template_types")
+}
+
+model Company {
+  id            String    @id @default(uuid()) @db.Uuid
+  createdAt     DateTime  @default(now()) @db.Date
+  updatedAt     DateTime  @updatedAt @db.Date
+  disabledAt    DateTime?
+  corporateName String    @unique
+  tradingName   String
+  cnpj          String    @unique
+  phone         String    @unique
+
+  Configuration   CompanyConfiguration @relation(fields: [configurationId], references: [id])
+  configurationId String               @unique @db.Uuid
+
+  MetaWhatsapp   CompanyMetaWhatsapp @relation(fields: [metaWhatsappId], references: [id])
+  metaWhatsappId String              @unique @db.Uuid
+
+  DefaultMessages CompanyDefaultMessage[]
+
+  @@map("companies")
+}
+
+model CompanyConfiguration {
+  id           String       @id @default(uuid()) @db.Uuid
+  closedChatIn Int?         @default(30)
+  requestLGPD  Boolean      @default(false)
+  timeToOpen   String?      @default("00:00")
+  timeToClose  String?      @default("23:59")
+  daysInWeek   DaysInWeek[] @default([SUNDAY, MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY])
+
+  Company Company?
+
+  @@map("company_configurations")
+}
+
+model CompanyMetaWhatsapp {
+  id         String @id @default(uuid()) @db.Uuid
+  phone      String
+  token      String
+  apiId      String
+  phoneId    String
+  whatsappId String
+
+  Company Company?
+
+  @@map("company_meta_whatsapps")
+}
+
+model CompanyDefaultMessage {
+  id String @id @default(uuid()) @db.Uuid
+
+  Company   Company? @relation(fields: [companyId], references: [id])
+  companyId String?  @db.Uuid
+
+  @@map("company_default_messages")
+}
+
+model Template {
+  id         String       @id @default(uuid()) @db.Uuid
+  createdAt  DateTime     @default(now()) @db.Date
+  updatedAt  DateTime     @updatedAt @db.Date
+  disabledAt DateTime?
+  name       String       @unique
+  type       TemplateType
+
+  @@map("templates")
+}
+
+model Message {
+  id        String       @id @default(uuid()) @db.Uuid
+  createdAt DateTime     @default(now()) @db.Date
+  message   String
+  type      TemplateType
+
+  CustomerSupport   CustomerSupport @relation(fields: [customerSupportId], references: [id])
+  customerSupportId String          @db.Uuid
+
+  @@map("messages")
+}
+
+model CustomerSupport {
+  id        String   @id @default(uuid()) @db.Uuid
+  createdAt DateTime @default(now()) @db.Date
+  updatedAt DateTime @updatedAt @db.Date
+
+  Department   Department? @relation(fields: [departmentId], references: [id])
+  departmentId String?     @db.Uuid
+
+  User   User?   @relation(fields: [userId], references: [id])
+  userId String? @db.Uuid
+
+  Client   Client? @relation(fields: [clientId], references: [id])
+  clientId String? @db.Uuid
+
+  messages Message[]
+
+  @@map("customer_supports")
+}
+
+model Department {
+  id        String   @id @default(uuid()) @db.Uuid
+  createdAt DateTime @default(now()) @db.Date
+  updatedAt DateTime @updatedAt @db.Date
+  name      String   @unique
+
+  CustomerSupports CustomerSupport[]
+
+  @@map("departments")
+}
+
+model User {
+  id        String   @id @default(uuid()) @db.Uuid
+  createdAt DateTime @default(now()) @db.Date
+  updatedAt DateTime @updatedAt @db.Date
+  name      String
+  email     String   @unique
+  password  String
+
+  Permission   UserPermission @relation(fields: [permissionId], references: [id])
+  permissionId String         @unique @db.Uuid
+
+  CustomerSupports CustomerSupport[]
+  Sessions         UserSession[]
+  PassTokens       UserPassToken[]
+  MessageShortcut  UserMessageShortcut[]
+
+  @@map("users")
+}
+
+model UserSession {
+  id        String   @id @default(uuid()) @db.Uuid
+  createdAt DateTime @default(now()) @db.Date
+  updatedAt DateTime @updatedAt @db.Date
+  expiresAt DateTime
+  token     String   @unique
+
+  User   User   @relation(fields: [userId], references: [id])
+  userId String @db.Uuid
+
+  @@map("user_sessions")
+}
+
+model UserPassToken {
+  id        String   @id @default(uuid()) @db.Uuid
+  createdAt DateTime @default(now()) @db.Date
+  updatedAt DateTime @updatedAt @db.Date
+  expiresAt DateTime
+  token     String   @unique
+
+  User   User   @relation(fields: [userId], references: [id])
+  userId String @db.Uuid
+
+  @@map("user_pass_tokens")
+}
+
+model UserPermission {
+  id        String   @id @default(uuid()) @db.Uuid
+  createdAt DateTime @default(now()) @db.Date
+  updatedAt DateTime @updatedAt @db.Date
+  name      String   @unique
+
+  User User?
+
+  @@map("user_permissions")
+}
+
+model UserMessageShortcut {
+  id        String   @id @default(uuid()) @db.Uuid
+  createdAt DateTime @default(now()) @db.Date
+  updatedAt DateTime @updatedAt @db.Date
+  name      String
+  shortcut  String
+
+  User   User   @relation(fields: [userId], references: [id])
+  userId String @db.Uuid
+
+  @@map("user_short_cuts")
+}
+
+model Client {
+  id               String   @id @default(uuid()) @db.Uuid
+  createdAt        DateTime @default(now()) @db.Date
+  updatedAt        DateTime @updatedAt @db.Date
+  name             String
+  email            String   @unique
+  phone            String   @unique
+  phoneHasWhatsapp Boolean  @default(true)
+
+  CustomerSupports CustomerSupport[]
+  Tags             ClientTag[]
+  Carts            Cart[]
+
+  @@map("clients")
+}
+
+model ClientTag {
+  id        String   @id @default(uuid()) @db.Uuid
+  createdAt DateTime @default(now()) @db.Date
+  updatedAt DateTime @updatedAt @db.Date
+  name      String   @unique
+
+  Clients Client[]
+
+  @@map("client_tags")
+}
+
+model Cart {
+  id        String    @id @default(uuid()) @db.Uuid
+  createdAt DateTime  @default(now()) @db.Date
+  updatedAt DateTime  @updatedAt @db.Date
+  closedAt  DateTime?
+  total     Float
+
+  Client   Client @relation(fields: [clientId], references: [id])
+  clientId String @db.Uuid
+
+  CustomerOrder   CustomerOrder?
+  customerOrderid String?        @unique @db.Uuid
+
+  Products Product[]
+
+  @@map("carts")
+}
+
+model CustomerOrder {
+  id        String    @id @default(uuid()) @db.Uuid
+  createdAt DateTime  @default(now()) @db.Date
+  updatedAt DateTime  @updatedAt @db.Date
+  closedAt  DateTime?
+  total     Float
+
+  Cart   Cart   @relation(fields: [cartId], references: [id])
+  cartId String @unique @db.Uuid
+
+  @@map("customer_orders")
+}
+
+model Product {
+  id        String   @id @default(uuid()) @db.Uuid
+  createdAt DateTime @default(now()) @db.Date
+  updatedAt DateTime @updatedAt @db.Date
+  name      String   @unique
+  price     Float
+  stock     Int
+
+  Carts      Cart[]
+  Categories Category[]
+
+  @@map("products")
+}
+
+model Category {
+  id        String   @id @default(uuid()) @db.Uuid
+  createdAt DateTime @default(now()) @db.Date
+  updatedAt DateTime @updatedAt @db.Date
+  name      String   @unique
+
+  Products Product[]
+
+  @@map("categories")
+}
